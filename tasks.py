@@ -11,9 +11,10 @@ SPARQL = "https://sparql.topo.transport.data.gouv.fr/bigdata/sparql"
 COMMON_ARGS = f"--api {API} --sparql {SPARQL}"
 DATA_GOUV_URL_PROD_ID = "P17"
 
+
 def _get_producer(ctx, dataset):
     datagouv_url = f"https://www.data.gouv.fr/fr/datasets/{dataset['datagouv_id']}"
-    cmd = f'{BIN_PATH}/entities search --claim "{DATA_GOUV_URL_PROD_ID}:<{datagouv_url}>" {COMMON_ARGS}'
+    cmd = f'{BIN_PATH}/entities search --claim "{DATA_GOUV_URL_PROD_ID}=<{datagouv_url}>" {COMMON_ARGS}'
     p = ctx.run(cmd)
 
     return p.stdout.strip()
@@ -31,6 +32,7 @@ def prepopulate(ctx):
     """
     ctx.run(f"{BIN_PATH}/prepopulate {COMMON_ARGS}")
 
+
 @task()
 def create_all_producer(ctx):
     """
@@ -39,7 +41,7 @@ def create_all_producer(ctx):
     nb_datasets = 0
     for d in _get_all_datasets():
         nb_datasets += 1
-        title = d['title']
+        title = d["title"]
 
         logging.info(f"creating producer {title}")
         if title is None:
@@ -54,6 +56,7 @@ def create_all_producer(ctx):
         cmd = f'{BIN_PATH}/producer create "{title}" {COMMON_ARGS} --claim "{DATA_GOUV_URL_PROD_ID}:{datagouv_url}"'
 
         ctx.run(cmd)
+
 
 @task()
 def import_all_ressources(ctx):
@@ -72,7 +75,11 @@ def import_all_ressources(ctx):
             url = r.get("url")
             if not url:
                 continue
+        if d.get("type") != "public-transit":
+            continue
+        if r.get("format").lower() != "gtfs":
+            continue
 
-        cmd = f'{BIN_PATH}/import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}'
+        cmd = f"{BIN_PATH}/import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}"
 
         ctx.run(cmd)
