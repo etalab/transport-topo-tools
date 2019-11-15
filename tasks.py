@@ -64,22 +64,30 @@ def import_all_ressources(ctx):
     List all backuped ressources
     """
     nb_datasets = 0
+    nb_resources = 0
 
     for d in _get_all_datasets():
         dataset_name = d["title"]
 
         producer = _get_producer(ctx, d)
 
-        logging.info(f" --- producer {producer}")
+        logging.info(f" ---https://github.com/pelias/docker.git dataset {dataset_name}, producer {producer}")
+        nb_datasets += 1
+
         for r in d["resources"]:
             url = r.get("url")
             if not url:
                 continue
-        if d.get("type") != "public-transit":
-            continue
-        if r.get("format").lower() != "gtfs":
-            continue
+            if d.get("type") != "public-transit":
+                continue
+            if r.get("format").lower() != "gtfs":
+                continue
+            nb_resources += 1
 
-        cmd = f"{BIN_PATH}/import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}"
+            cmd = f"{BIN_PATH}/import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}"
 
-        ctx.run(cmd)
+            logging.info("running {cmd}")
+
+            ctx.run(cmd)
+    
+    logging.info(f"{nb_datasets} datasets and {nb_resources} resources imported")
