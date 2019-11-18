@@ -14,6 +14,8 @@ DATA_GOUV_URL_PROD_ID = "P17"
 def _get_producer(ctx, dataset):
     datagouv_url = f"https://www.data.gouv.fr/fr/datasets/{dataset['datagouv_id']}"
     cmd = f'entities search --claim "{DATA_GOUV_URL_PROD_ID}=<{datagouv_url}>" {COMMON_ARGS}'
+    logging.info(f"searching producer: {cmd}")
+
     p = ctx.run(cmd)
 
     return p.stdout.strip()
@@ -64,13 +66,14 @@ def import_all_ressources(ctx):
     """
     nb_datasets = 0
     nb_resources = 0
+    failed = []
 
     for d in _get_all_datasets():
         dataset_name = d["title"]
 
         producer = _get_producer(ctx, d)
 
-        logging.info(f" ---https://github.com/pelias/docker.git dataset {dataset_name}, producer {producer}")
+        logging.info(f"dataset {dataset_name}, producer {producer}")
         nb_datasets += 1
 
         for r in d["resources"]:
@@ -85,8 +88,25 @@ def import_all_ressources(ctx):
 
             cmd = f"import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}"
 
-            logging.info("running {cmd}")
+            logging.info(f"running {cmd}")
 
-            ctx.run(cmd)
-    
+            res = ctx.run(cmd, warn=True)
+
+            if res.exited != 0:
+                logging.warn(f"command {res.command} exited with code {res.exited}")
+                failed.append(
+                    {
+                        "dataset": dataset_name,
+                        "produced": producer,
+                        "command": cmd,
+                        "status": res.exited,
+                        "resource": r.get("title"),
+                    }
+                )
+
     logging.info(f"{nb_datasets} datasets and {nb_resources} resources imported")
+
+    if failed:
+        logging.warn("failed datasets:")
+        for f in failed:
+            logging.warn(f)
