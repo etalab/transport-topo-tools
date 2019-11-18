@@ -5,7 +5,6 @@ import unidecode
 
 logging.basicConfig(level=logging.INFO)
 
-BIN_PATH = "/home/antoine/dev/beta.gouv.fr/transport-topo/target/release"
 API = "https://topo.transport.data.gouv.fr/api.php"
 SPARQL = "https://sparql.topo.transport.data.gouv.fr/bigdata/sparql"
 COMMON_ARGS = f"--api {API} --sparql {SPARQL}"
@@ -14,7 +13,7 @@ DATA_GOUV_URL_PROD_ID = "P17"
 
 def _get_producer(ctx, dataset):
     datagouv_url = f"https://www.data.gouv.fr/fr/datasets/{dataset['datagouv_id']}"
-    cmd = f'{BIN_PATH}/entities search --claim "{DATA_GOUV_URL_PROD_ID}=<{datagouv_url}>" {COMMON_ARGS}'
+    cmd = f'entities search --claim "{DATA_GOUV_URL_PROD_ID}=<{datagouv_url}>" {COMMON_ARGS}'
     logging.info(f"searching producer: {cmd}")
 
     p = ctx.run(cmd)
@@ -32,7 +31,7 @@ def prepopulate(ctx):
     """
     List all backuped ressources
     """
-    ctx.run(f"{BIN_PATH}/prepopulate {COMMON_ARGS}")
+    ctx.run(f"prepopulate {COMMON_ARGS}")
 
 
 @task()
@@ -55,7 +54,7 @@ def create_all_producer(ctx):
 
         datagouv_url = f"https://www.data.gouv.fr/fr/datasets/{d['datagouv_id']}"
 
-        cmd = f'{BIN_PATH}/producer create "{title}" {COMMON_ARGS} --claim "{DATA_GOUV_URL_PROD_ID}:{datagouv_url}"'
+        cmd = f'producer create "{title}" {COMMON_ARGS} --claim "{DATA_GOUV_URL_PROD_ID}:{datagouv_url}"'
 
         ctx.run(cmd)
 
@@ -87,7 +86,7 @@ def import_all_ressources(ctx):
                 continue
             nb_resources += 1
 
-            cmd = f"{BIN_PATH}/import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}"
+            cmd = f"import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}"
 
             logging.info(f"running {cmd}")
 

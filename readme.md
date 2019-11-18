@@ -11,6 +11,8 @@ Then you need to run `pipenv install`
 
 There are several endpoints to the script.
 
+Note: the binaries of [topo](https://github.com/etalab/transport-topo/) needs to be in the PATH.
+
 ### Prepopulate
 
 ```bash
