@@ -8,12 +8,15 @@ logging.basicConfig(level=logging.INFO)
 API = "https://topo.transport.data.gouv.fr/api.php"
 SPARQL = "https://sparql.topo.transport.data.gouv.fr/bigdata/sparql"
 COMMON_ARGS = f"--api {API} --sparql {SPARQL}"
-DATA_GOUV_URL_PROD_ID = "P17"
+DATA_GOUV_URL_PROP_ID = None
 
 
 def _get_producer(ctx, dataset):
     datagouv_url = f"https://www.data.gouv.fr/fr/datasets/{dataset['datagouv_id']}"
-    cmd = f'entities search --claim "{DATA_GOUV_URL_PROD_ID}=<{datagouv_url}>" {COMMON_ARGS}'
+    data_gouv_prop_id = _get_data_gouv_prop_id(ctx)
+    cmd = (
+        f'entities search --claim "{data_gouv_prop_id}=<{datagouv_url}>" {COMMON_ARGS}'
+    )
     logging.info(f"searching producer: {cmd}")
 
     p = ctx.run(cmd)
@@ -24,6 +27,33 @@ def _get_producer(ctx, dataset):
 def _get_all_datasets():
     r = requests.get("https://transport.data.gouv.fr/api/datasets")
     return r.json()
+
+
+@task()
+def init(ctx):
+    prepopulate(ctx)
+    create_data_gouv_url_prop(ctx)
+    create_all_producer(ctx)
+
+
+@task()
+def create_data_gouv_url_prop(ctx):
+
+    cmd = f'entities create "data_gouv_url" --type urlproperty {COMMON_ARGS}'
+    logging.info(f"searching 'data_gouv_url' prop: {cmd}")
+
+    p = ctx.run(cmd)
+
+    global DATA_GOUV_URL_PROP_ID
+    DATA_GOUV_URL_PROP_ID = p.stdout.strip()
+
+    return DATA_GOUV_URL_PROP_ID
+
+
+def _get_data_gouv_prop_id(ctx):
+    if DATA_GOUV_URL_PROP_ID is None:
+        create_data_gouv_url_prop(ctx)
+    return DATA_GOUV_URL_PROP_ID
 
 
 @task()
@@ -54,7 +84,9 @@ def create_all_producer(ctx):
 
         datagouv_url = f"https://www.data.gouv.fr/fr/datasets/{d['datagouv_id']}"
 
-        cmd = f'producer create "{title}" {COMMON_ARGS} --claim "{DATA_GOUV_URL_PROD_ID}:{datagouv_url}"'
+        data_gouv_prop_id = _get_data_gouv_prop_id(ctx)
+
+        cmd = f'entities create "{title}" {COMMON_ARGS} --type item --unique-claim "@instance_of=@producer" --claim "{data_gouv_prop_id}={datagouv_url}"'
 
         ctx.run(cmd)
 
