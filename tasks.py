@@ -91,6 +91,54 @@ def create_all_producer(ctx):
         ctx.run(cmd)
 
 
+class DatasetImportResult(object):
+    def __init__(self):
+        super().__init__()
+        self.nb_resources = 0
+        self.failed = []
+
+
+def _import_dataset(ctx, d, override):
+    dataset_name = d["title"]
+
+    producer = _get_producer(ctx, d)
+
+    logging.info(f"dataset {dataset_name}, producer {producer}")
+    result = DatasetImportResult()
+
+    for r in d["resources"]:
+        url = r.get("url")
+        if not url:
+            continue
+        if d.get("type") != "public-transit":
+            continue
+        if r.get("format").lower() != "gtfs":
+            continue
+        result.nb_resources += 1
+
+        cmd = f"import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}"
+
+        if override:
+            cmd += " --override-existing"
+
+        logging.info(f"running {cmd}")
+
+        res = ctx.run(cmd, warn=True)
+
+        if res.exited != 0:
+            logging.warn(f"command {res.command} exited with code {res.exited}")
+            result.failed.append(
+                {
+                    "dataset": dataset_name,
+                    "produced": producer,
+                    "command": cmd,
+                    "status": res.exited,
+                    "resource": r.get("title"),
+                }
+            )
+    return result
+
+
 @task()
 def import_all_ressources(ctx, override=False):
     """
@@ -101,43 +149,10 @@ def import_all_ressources(ctx, override=False):
     failed = []
 
     for d in _get_all_datasets():
-        dataset_name = d["title"]
-
-        producer = _get_producer(ctx, d)
-
-        logging.info(f"dataset {dataset_name}, producer {producer}")
         nb_datasets += 1
-
-        for r in d["resources"]:
-            url = r.get("url")
-            if not url:
-                continue
-            if d.get("type") != "public-transit":
-                continue
-            if r.get("format").lower() != "gtfs":
-                continue
-            nb_resources += 1
-
-            cmd = f"import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}"
-
-            if override:
-                cmd += ' --override-existing'
-
-            logging.info(f"running {cmd}")
-
-            res = ctx.run(cmd, warn=True)
-
-            if res.exited != 0:
-                logging.warn(f"command {res.command} exited with code {res.exited}")
-                failed.append(
-                    {
-                        "dataset": dataset_name,
-                        "produced": producer,
-                        "command": cmd,
-                        "status": res.exited,
-                        "resource": r.get("title"),
-                    }
-                )
+        res = _import_dataset(ctx, d, override)
+        nb_resources += res.nb_resources
+        failed.extend(res.failed)
 
     logging.info(f"{nb_datasets} datasets and {nb_resources} resources imported")
 
