@@ -60,7 +60,7 @@ def create_all_producer(ctx):
 
 
 @task()
-def import_all_ressources(ctx):
+def import_all_ressources(ctx, override=False):
     """
     List all backuped ressources
     """
@@ -87,6 +87,9 @@ def import_all_ressources(ctx):
             nb_resources += 1
 
             cmd = f"import-gtfs {COMMON_ARGS} --input-gtfs {url} --producer {producer}"
+
+            if override:
+                cmd += ' --override-existing'
 
             logging.info(f"running {cmd}")
 
